@@ -146,7 +146,7 @@ class RequestCreator(object):
     @classmethod
     def _replace_dict_variables(cls, dic):
         """Recursively evaluates all meta variables in a given dict."""
-        for (key, value) in dic.items():
+        for (key, value) in list(dic.items()):
             # Keys dont get fuzzed, so can handle them here
             match = re.search(cls.METAVAR, key)
             if match:
@@ -424,7 +424,7 @@ class RequestHelperMixin(object):
     @classmethod
     def _run_iters_dict(cls, dic, action_field=""):
         """Run fuzz iterators for a dict type."""
-        for key, val in dic.items():
+        for key, val in list(dic.items()):
             dic[key] = val = cls._replace_iter(val)
             if isinstance(key, six.string_types):
                 new_key = cls._replace_iter(key).replace(action_field, "")
@@ -486,7 +486,7 @@ class RequestHelperMixin(object):
         for k, v in list(_iterators.items()):
             if k in string:
                 string = string.replace(k, six.next(v))
-        for k, v in _string_var_objs.items():
+        for k, v in list(_string_var_objs.items()):
             if k in string:
                 str_val = str(RequestCreator.replace_one_variable(v))
                 string = string.replace(k, str_val)

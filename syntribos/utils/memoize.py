@@ -29,7 +29,7 @@ def memoize(func):
     @wraps(func)
     def decorate(*args, **kwargs):
         ttl = time() + CONF.user.token_ttl
-        func_id = args, frozenset(kwargs.items())
+        func_id = args, frozenset(list(kwargs.items()))
         if memoized_calls.get(func_id):
             time_left = memoized_calls[func_id]["ttl"] - time()
             if time_left > 0:

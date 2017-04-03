@@ -83,7 +83,7 @@ class SignalHolderUnittest(testtools.TestCase):
             data={"test3": "test3"})
 
     def _assert_same_signal(self, expected, observed):
-        for key, item in vars(expected).items():
+        for key, item in list(vars(expected).items()):
             self.assertEqual(item, observed.__dict__[key])
 
     def test_init_one_signal(self):

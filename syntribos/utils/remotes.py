@@ -20,7 +20,7 @@ import tempfile
 from oslo_config import cfg
 
 from syntribos.clients.http.client import SynHTTPClient
-from syntribos._i18n import _LI, _LE, _LW   # noqa
+from syntribos._i18n import _LI, _LE, _LW, _   # noqa
 
 CONF = cfg.CONF
 LOG = logging.getLogger(__name__)
@@ -67,7 +67,7 @@ def download(uri, cache_dir=None):
     saved_umask = os.umask(0o77)
     fname = uri.split("/")[-1]
     try:
-        with open(fname, 'w') as fh:
+        with open(fname, 'wb') as fh:
             fh.write(resp.content)
         return os.path.abspath(fname)
     except IOError:
@@ -79,13 +79,13 @@ def download(uri, cache_dir=None):
 def file_type(path):
     """Identifies what the type of file is."""
     signature = {
-        "\x1f\x8b\x08": "gz",
-        "\x42\x5a\x68": "bz2",
-        "\x50\x4b\x03\x04": "zip"
+        b"\x1f\x8b\x08": "gz",
+        b"\x42\x5a\x68": "bz2",
+        b"\x50\x4b\x03\x04": "zip"
     }
-    with open(path) as f:
-        for sig, f_type in signature.items():
-            if f.read(4).startswith(sig):
+    with open(path, 'rb') as f:
+        for sig, f_type in list(signature.items()):
+            if f.read(4) == sig:
                 return f_type
 
 

@@ -46,7 +46,7 @@ class HTTPCheckUnittest(testtools.TestCase):
     def _assert_has_tags(self, tags, signals):
         signal = self._get_one_signal(signals, tags=tags)
         self.assertEqual(len(tags), len(signal.tags))
-        list(map(lambda t: self.assertIn(t, signal.tags), tags))
+        list([self.assertIn(t, signal.tags) for t in tags])
 
 
 class HTTPFailureUnittest(HTTPCheckUnittest):

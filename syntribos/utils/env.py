@@ -243,38 +243,38 @@ def initialize_syntribos_env():
 
     payloads_dir = folders_created[1]
     if not CONF.sub_command.no_downloads:
-        print(
-            _("\nDownloading payload files to %s...") % payloads_dir)
+        print((
+            _("\nDownloading payload files to %s...") % payloads_dir))
         try:
             remote_path = remotes.get(CONF.remote.payloads_uri, payloads_dir)
             conf_file = create_conf_file(folders_created, remote_path)
-            print(_("Download successful!"))
+            print((_("Download successful!")))
         except (requests.ConnectionError, IOError):
-            print(_("Download failed. If you would still like to download"
+            print((_("Download failed. If you would still like to download"
                     " payload files, please consult our documentation"
                     " about the 'syntribos download' command or do so"
-                    " manually."))
+                    " manually.")))
             conf_file = create_conf_file(folders_created)
     else:
         conf_file = create_conf_file(folders_created)
 
     logging.disable(logging.NOTSET)
 
-    print(_("\nSyntribos has been initialized!"))
-    print(
-        _("Folders created:\n\t%s") % "\n\t".join(folders_created))
-    print(_("Configuration file:\n\t%s") % conf_file)
-    print(_(
+    print((_("\nSyntribos has been initialized!")))
+    print((
+        _("Folders created:\n\t%s") % "\n\t".join(folders_created)))
+    print((_("Configuration file:\n\t%s") % conf_file))
+    print((_(
         "\nYou'll need to edit your configuration file to specify the "
-        "endpoint to test and any other configuration options you want."))
-    print(_(
+        "endpoint to test and any other configuration options you want.")))
+    print((_(
         "\nBy default, syntribos does not ship with any template files, "
         "which are required for syntribos to run. However, we provide a\n "
         "'syntribos download' command to fetch template files remotely. "
         "Please see our documentation for this subcommand, or run\n "
         "'syntribos download --templates' to download our default set of "
-        "OpenStack templates."))
-    print(syntribos.SEP)
+        "OpenStack templates.")))
+    print((syntribos.SEP))
 
 
 def is_syntribos_initialized():
@@ -310,37 +310,37 @@ def download_wrapper():
                     os.path.join(get_syntribos_root(), "payloads"))
 
     if not CONF.sub_command.templates and not CONF.sub_command.payloads:
-        print(
+        print((
             _(
                 "Please specify the --templates flag and/or the --payloads"
-                "flag to this command.\nNo files have been downloaded.\n"))
+                "flag to this command.\nNo files have been downloaded.\n")))
 
     if CONF.sub_command.templates:
-        print(_(
+        print((_(
             "Downloading template files from %(uri)s to %(dir)s..."
-        ) % {"uri": templates_uri, "dir": templates_dir})
+        ) % {"uri": templates_uri, "dir": templates_dir}))
         try:
             remotes.get(templates_uri, templates_dir)
-            print(_(
+            print((_(
                 "Download successful! To use these templates, edit your "
-                "config file to update the location of templates."))
+                "config file to update the location of templates.")))
         except Exception:
-            print(_(
+            print((_(
                 "Template download failed. Our documentation contains "
-                "instructions to provide templates manually."))
+                "instructions to provide templates manually.")))
             exit(1)
 
     if CONF.sub_command.payloads:
-        print(_(
+        print((_(
             "Downloading payload files from %(uri)s to %(dir)s...\n") % {
-                "uri": payloads_uri, "dir": payloads_dir})
+                "uri": payloads_uri, "dir": payloads_dir}))
         try:
             remotes.get(payloads_uri, payloads_dir)
-            print(_(
+            print((_(
                 "Download successful! To use these payloads, edit your "
-                "config file to update the location of payloads."))
+                "config file to update the location of payloads.")))
         except Exception:
-            print(_(
+            print((_(
                 "Payload download failed. Our documentation contains "
-                "instructions to provide payloads manually."))
+                "instructions to provide payloads manually.")))
             exit(1)

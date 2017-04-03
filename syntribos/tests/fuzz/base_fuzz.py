@@ -53,8 +53,8 @@ class BaseFuzzTestCase(base.BaseTestCase):
                 return fp.read().splitlines()
         except (IOError, AttributeError, TypeError) as e:
             LOG.error("Exception raised: {}".format(e))
-            print("\nPayload file for test '{}' not readable, "
-                  "exiting...".format(cls.test_name))
+            print(("\nPayload file for test '{}' not readable, "
+                  "exiting...".format(cls.test_name)))
             exit(1)
 
     @classmethod

@@ -243,17 +243,17 @@ class IssueTestResult(unittest.TextTestResult):
         run_time = time.time() - start_time
         num_fail = self.stats["failures"]
         num_err = self.stats["errors"]
-        print("\n{sep}\nTotal: Ran {num} test{suff} in {time:.3f}s".format(
+        print(("\n{sep}\nTotal: Ran {num} test{suff} in {time:.3f}s".format(
             sep=syntribos.SEP,
             num=self.testsRun,
             suff="s" * bool(self.testsRun - 1),
-            time=run_time))
-        print("Total: {f} failure{fsuff} and {e} error{esuff}".format(
+            time=run_time)))
+        print(("Total: {f} failure{fsuff} and {e} error{esuff}".format(
             f=num_fail,
             e=num_err,
             fsuff="s" * bool(num_fail - 1),
-            esuff="s" * bool(num_err - 1)))
+            esuff="s" * bool(num_err - 1))))
         if test_log:
-            print(syntribos.SEP)
-            print(_("LOG PATH...: %s") % test_log)
-            print(syntribos.SEP)
+            print((syntribos.SEP))
+            print((_("LOG PATH...: %s") % test_log))
+            print((syntribos.SEP))

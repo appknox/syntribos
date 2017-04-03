@@ -55,9 +55,9 @@ class Runner(object):
     @classmethod
     def list_tests(cls):
         """Print out the list of available tests types that can be run."""
-        print(_("List of available tests...:\n"))
-        print("{:<50}{}\n".format(_("[Test Name]"),
-                                  _("[Description]")))
+        print((_("List of available tests...:\n")))
+        print(("{:<50}{}\n".format(_("[Test Name]"),
+                                  _("[Description]"))))
         testdict = {name: clss.__doc__ for name, clss in cls.get_tests()}
         for test in sorted(testdict):
             if testdict[test] is None:
@@ -66,8 +66,8 @@ class Runner(object):
                       " as doc string for the test: %s") % test)
             else:
                 test_description = testdict[test].split(".")[0]
-            print("{test:<50}{desc}\r".format(
-                test=test, desc=test_description))
+            print(("{test:<50}{desc}\r".format(
+                test=test, desc=test_description)))
         print("\n")
 
     @classmethod
@@ -175,7 +175,7 @@ class Runner(object):
         for seg in path_segments:
             current_path = os.path.join(current_path, seg)
             if current_path in cls.meta_dir_dict:
-                for k, v in cls.meta_dir_dict[current_path].items():
+                for k, v in list(cls.meta_dir_dict[current_path].items()):
                     meta_vars[k] = v
         return meta_vars
 
@@ -209,16 +209,16 @@ class Runner(object):
                 ENV.download_wrapper()
                 exit(0)
         except AttributeError:
-            print(
+            print((
                 _(
                     "Not able to run the requested sub command, please check "
-                    "the debug logs for more information, exiting..."))
+                    "the debug logs for more information, exiting...")))
             exit(1)
 
         if not ENV.is_syntribos_initialized():
-            print(_("Syntribos was not initialized. Please run the 'init'"
+            print((_("Syntribos was not initialized. Please run the 'init'"
                     " command or set it up manually. See the README for"
-                    " more information about the installation process."))
+                    " more information about the installation process.")))
             exit(1)
 
         cls.setup_runtime_env()
@@ -234,20 +234,20 @@ class Runner(object):
             dry_run_output = {"failures": [], "successes": []}
             list_of_tests = list(cls.get_tests(dry_run=True))
 
-        print(_("\nRunning Tests...:"))
+        print((_("\nRunning Tests...:")))
         templates_dir = CONF.syntribos.templates
         if templates_dir is None:
-            print(_("Attempting to download templates from {}").format(
-                CONF.remote.templates_uri))
+            print((_("Attempting to download templates from {}").format(
+                CONF.remote.templates_uri)))
             templates_path = remotes.get(CONF.remote.templates_uri)
             try:
                 templates_dir = ContentType("r", 0)(templates_path)
             except IOError:
-                print(_("Not able to open `%s`; please verify path, "
-                        "exiting...") % templates_path)
+                print((_("Not able to open `%s`; please verify path, "
+                        "exiting...") % templates_path))
                 exit(1)
 
-        print(_("\nPress Ctrl-C to pause or exit...\n"))
+        print((_("\nPress Ctrl-C to pause or exit...\n")))
         meta_vars = None
         templates_dir = list(templates_dir)
         cls.meta_dir_dict = {}
@@ -257,7 +257,7 @@ class Runner(object):
                 try:
                     cls.meta_dir_dict[meta_path] = json.loads(file_content)
                 except Exception:
-                    print("Unable to parse %s, skipping..." % file_path)
+                    print(("Unable to parse %s, skipping..." % file_path))
 
         for file_path, req_str in templates_dir:
             if "meta.json" in file_path:
@@ -278,9 +278,9 @@ class Runner(object):
                 'tests......: {0}\n'.format(test_names)
             ])
             LOG.debug(log_string)
-            print(syntribos.SEP)
-            print("Template File...: {}".format(file_path))
-            print(syntribos.SEP)
+            print((syntribos.SEP))
+            print(("Template File...: {}".format(file_path)))
+            print((syntribos.SEP))
 
             if CONF.sub_command.name == "run":
                 cls.run_given_tests(list_of_tests, file_path,
@@ -317,15 +317,15 @@ class Runner(object):
                 print("\nParsing template file...\n")
                 test_class.create_init_request(file_path, req_str, meta_vars)
             except Exception as e:
-                print("\nError in parsing template:\n \t{0}\n".format(
-                    traceback.format_exc()))
+                print(("\nError in parsing template:\n \t{0}\n".format(
+                    traceback.format_exc())))
                 LOG.error(_LE("Error in parsing template:"))
                 output["failures"].append({
                     "file": file_path,
                     "error": e.__str__()
                 })
             else:
-                print(_("\nRequest sucessfully generated!\n"))
+                print((_("\nRequest sucessfully generated!\n")))
                 output["successes"].append(file_path)
 
             test_cases = list(test_class.get_test_cases(file_path, req_str))
@@ -342,9 +342,9 @@ class Runner(object):
         formatter.report(output)
 
         test_log = cls.log_path
-        print(syntribos.SEP)
-        print(_("LOG PATH...: {path}").format(path=test_log))
-        print(syntribos.SEP)
+        print((syntribos.SEP))
+        print((_("LOG PATH...: {path}").format(path=test_log)))
+        print((syntribos.SEP))
 
     @classmethod
     def run_given_tests(cls, list_of_tests, file_path, req_str,
@@ -382,9 +382,9 @@ class Runner(object):
                 try:
                     test_class.send_init_request(file_path, req_str, meta_vars)
                 except Exception:
-                    print(_(
+                    print((_(
                         "Error in parsing template:\n %s\n"
-                    ) % traceback.format_exc())
+                    ) % traceback.format_exc()))
                     LOG.error(_LE("Error in parsing template:"))
                     break
                 test_cases = list(
@@ -415,38 +415,38 @@ class Runner(object):
                         last_failures = result.stats["failures"]
                         last_errors = result.stats["errors"]
                         errors = cli.colorize(errors, "red")
-                        print(_(
+                        print((_(
                             "  :  %(fail)s Failure(s), %(err)s Error(s)\r") % {
-                                "fail": failures, "err": errors})
+                                "fail": failures, "err": errors}))
                     else:
                         last_failures = result.stats["failures"]
-                        print(
+                        print((
                             _(
-                                "  : %s Failure(s), 0 Error(s)\r") % failures)
+                                "  : %s Failure(s), 0 Error(s)\r") % failures))
 
             run_time = time.time() - template_start_time
             LOG.info(_("Run time: %s sec."), run_time)
             if hasattr(result, "testsRun"):
                 num_tests = result.testsRun - result.testsRunSinceLastPrint
-                print(_("\nRan %(num)s test(s) in %(time).3f s\n") %
-                      {"num": num_tests, "time": run_time})
+                print((_("\nRan %(num)s test(s) in %(time).3f s\n") %
+                      {"num": num_tests, "time": run_time}))
                 result.testsRunSinceLastPrint = result.testsRun
 
         except KeyboardInterrupt:
-            print(_(
-                '\n\nPausing...Hit ENTER to continue, type quit to exit.'))
+            print((_(
+                '\n\nPausing...Hit ENTER to continue, type quit to exit.')))
             try:
-                response = input()
+                response = eval(input())
                 if response.lower() == "quit":
                     result.print_result(cls.start_time)
                     cleanup.delete_temps()
-                    print(_("Exiting..."))
+                    print((_("Exiting...")))
                     exit(0)
-                print(_('Resuming...'))
+                print((_('Resuming...')))
             except KeyboardInterrupt:
                 result.print_result(cls.start_time)
                 cleanup.delete_temps()
-                print(_("Exiting..."))
+                print((_("Exiting...")))
                 exit(0)
 
     @classmethod

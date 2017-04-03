@@ -281,7 +281,7 @@ class FuzzDatagenUnittest(testtools.TestCase):
     def test_var_obj_limits_ascii(self):
         var_obj = VariableObject(name="ascii_var", val="test",
                                  fuzz_types=["ascii"])
-        string = u"\u0124\u0100\u0154\u0100\u004D\u00DF\u00EB"
+        string = "\u0124\u0100\u0154\u0100\u004D\u00DF\u00EB"
         self.assertEqual(
             fuzz_datagen._check_var_obj_limits(var_obj, string), False)
         string = "test"

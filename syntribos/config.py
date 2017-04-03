@@ -49,7 +49,7 @@ def handle_config_exception(exc):
 
     if msg:
         LOG.warning(msg)
-        print(syntribos.SEP)
+        print((syntribos.SEP))
         sys.exit(0)
     else:
         LOG.exception(exc)
