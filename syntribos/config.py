@@ -160,7 +160,9 @@ def list_cli_opts():
                    help="Select a minimum severity for reported defects"),
         cfg.StrOpt("min-confidence", dest="min_confidence", short="C",
                    default="LOW", choices=syntribos.RANKING,
-                   help="Select a minimum confidence for reported defects")
+                   help="Select a minimum confidence for reported defects"),
+        cfg.StrOpt("proxy", dest="proxy", short="P", default="",
+                   help="Proxy server URL"),
     ]
 
 

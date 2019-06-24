@@ -13,6 +13,11 @@
 # limitations under the License.
 import syntribos.checks.http as http_checks
 from syntribos.clients.http.base_http_client import HTTPClient
+from oslo_config import cfg
+from syntribos.utils.req import format_proxies
+
+
+CONF = cfg.CONF
 
 
 class SynHTTPClient(HTTPClient):
@@ -40,6 +45,10 @@ class SynHTTPClient(HTTPClient):
             requestslib_kwargs = {"timeout": 10}
         elif not requestslib_kwargs.get("timeout", None):
             requestslib_kwargs["timeout"] = 10
+
+        proxy_url = CONF.get("proxy") or CONF.proxy
+        if proxy_url:
+            requestslib_kwargs["proxies"] = format_proxies(proxy_url)
 
         response, signals = super(SynHTTPClient, self).request(
             method, url, headers=headers, params=params, data=data,
