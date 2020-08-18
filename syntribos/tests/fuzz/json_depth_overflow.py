@@ -22,7 +22,7 @@ class JSONDepthOverflowBody(base_fuzz.BaseFuzzTestCase):
     """Test for json depth overflow in HTTP body."""
 
     test_name = "JSON_DEPTH_OVERFLOW_BODY"
-    test_type = "data"
+    parameter_location = "data"
     failure_keys = [
         "maximum recursion depth exceeded",
         "RuntimeError",
@@ -56,7 +56,7 @@ class JSONDepthOverflowBody(base_fuzz.BaseFuzzTestCase):
             self.register_issue(
                 defect_type="json_depth_timing",
                 severity=syntribos.MEDIUM,
-                confidence=syntribos.MEDIUM,
+                confidence=syntribos.LOW,
                 description=(_("The time it took to resolve a request "
                                "was too long compared to the "
                                "baseline request. This could indicate a "

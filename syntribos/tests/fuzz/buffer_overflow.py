@@ -22,7 +22,7 @@ class BufferOverflowBody(base_fuzz.BaseFuzzTestCase):
     """Test for buffer overflow vulnerabilities in HTTP body."""
 
     test_name = "BUFFER_OVERFLOW_BODY"
-    test_type = "data"
+    parameter_location = "data"
     failure_keys = [
         '*** stack smashing detected ***:',
         'Backtrace:',
@@ -34,7 +34,6 @@ class BufferOverflowBody(base_fuzz.BaseFuzzTestCase):
         return [
             "A" * (2 ** 16 + 1),
             "a" * 10 ** 5,
-            "a" * 10 ** 6,
             '\x00' * (2 ** 16 + 1),
             "%%s" * 513,
         ]
@@ -48,7 +47,7 @@ class BufferOverflowBody(base_fuzz.BaseFuzzTestCase):
             self.register_issue(
                 defect_type="bof_strings",
                 severity=syntribos.MEDIUM,
-                confidence=syntribos.LOW,
+                confidence=syntribos.MEDIUM,
                 description=("The string(s): '{0}', known to be commonly "
                              "returned after a successful buffer overflow "
                              "attack, have been found in the response. This "
@@ -60,7 +59,7 @@ class BufferOverflowBody(base_fuzz.BaseFuzzTestCase):
             self.register_issue(
                 defect_type="bof_timing",
                 severity=syntribos.MEDIUM,
-                confidence=syntribos.MEDIUM,
+                confidence=syntribos.LOW,
                 description=(_("The time it took to resolve a request with a "
                                "long string was too long compared to the "
                                "baseline request. This could indicate a "
@@ -71,19 +70,19 @@ class BufferOverflowParams(BufferOverflowBody):
     """Test for buffer overflow vulnerabilities in HTTP params."""
 
     test_name = "BUFFER_OVERFLOW_PARAMS"
-    test_type = "params"
+    parameter_location = "params"
 
 
 class BufferOverflowHeaders(BufferOverflowBody):
     """Test for buffer overflow vulnerabilities in HTTP header."""
 
     test_name = "BUFFER_OVERFLOW_HEADERS"
-    test_type = "headers"
+    parameter_location = "headers"
 
 
 class BufferOverflowURL(BufferOverflowBody):
     """Test for buffer overflow vulnerabilities in HTTP URL."""
 
     test_name = "BUFFER_OVERFLOW_URL"
-    test_type = "url"
+    parameter_location = "url"
     url_var = "FUZZ"

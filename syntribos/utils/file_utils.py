@@ -47,20 +47,23 @@ class ExistingFileType(ExistingPathType):
 class ContentType(ExistingPathType):
     """Reads a file/directory to collect the contents."""
 
-    def __init__(self, mode, bufsize):
+    def __init__(self, mode):
         self._mode = mode
-        self._bufsize = bufsize
         self._root = ""
 
     def _fetch_from_dir(self, string):
         for path, _, files in os.walk(string):
             for file_ in files:
-                file_path = os.path.join(path, file_)
-                if path is not self._root:
-                    subdir = os.path.relpath(path, self._root)
-                    yield self._fetch_from_file(file_path, subdir)
-                else:
-                    yield self._fetch_from_file(file_path)
+                try:
+                    file_path = os.path.join(path, file_)
+                    if path is not self._root:
+                        subdir = os.path.relpath(path, self._root)
+                        yield self._fetch_from_file(file_path, subdir)
+
+                    else:
+                        yield self._fetch_from_file(file_path)
+                except Exception:
+                    print("Skipped %s" % string)
 
     def _fetch_from_file(self, string, subdir=None):
         # Get the filename here
@@ -69,7 +72,7 @@ class ContentType(ExistingPathType):
             # Path relative to the "templates" directory specified by user
             relative_path = os.path.join(subdir, relative_path)
         try:
-            with open(string, self._mode, self._bufsize) as fp:
+            with open(string, self._mode) as fp:
                 return relative_path, fp.read()
         except IOError as exc:
             self._raise_invalid_file(string, exc=exc)

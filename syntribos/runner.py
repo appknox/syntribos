@@ -16,29 +16,32 @@ import logging
 import os
 import pkgutil
 import sys
+import threading
 import time
 import traceback
 import unittest
+from multiprocessing.dummy import Pool as ThreadPool
 
 from oslo_config import cfg
 from six.moves import input
 
 import syntribos.config
-from syntribos.formatters.json_formatter import JSONFormatter
-from syntribos._i18n import _, _LW, _LE   # noqa
 import syntribos.result
 import syntribos.tests as tests
 import syntribos.tests.base
+from syntribos._i18n import _
+from syntribos.formatters.json_formatter import JSONFormatter
 from syntribos.utils import cleanup
 from syntribos.utils import cli as cli
 from syntribos.utils import env as ENV
-from syntribos.utils.file_utils import ContentType
 from syntribos.utils import remotes
+from syntribos.utils.file_utils import ContentType
 
 result = None
 user_base_dir = None
 CONF = cfg.CONF
 LOG = logging.getLogger(__name__)
+lock = threading.Lock()
 
 
 class Runner(object):
@@ -125,6 +128,7 @@ class Runner(object):
         LOG = logging.getLogger()
         LOG.handlers = [log_handle]
         LOG.setLevel(logging.DEBUG)
+        logging.getLogger("urllib3").setLevel(logging.WARNING)
         return LOG
 
     @classmethod
@@ -135,11 +139,18 @@ class Runner(object):
         try:
             syntribos.config.register_opts()
             if use_file:
+                # Parsing the args first in case a custom_install_root
+                # was specified.
+                CONF(argv, default_config_files=[])
                 CONF(argv, default_config_files=[ENV.get_default_conf_file()])
             else:
                 CONF(argv, default_config_files=[])
         except Exception as exc:
             syntribos.config.handle_config_exception(exc)
+            if cls.worker:
+                raise exc
+            else:
+                sys.exit(1)
 
     @classmethod
     def setup_runtime_env(cls):
@@ -169,8 +180,15 @@ class Runner(object):
         :param file_path: the path of the current template
         :returns: `dict` of meta variables
         """
-        path_segments = [""] + os.path.dirname(file_path).split(os.sep)
         meta_vars = {}
+        if CONF.syntribos.meta_vars:
+            with open(CONF.syntribos.meta_vars, "r") as f:
+                conf_meta_vars = json.loads(f.read())
+                for k, v in conf_meta_vars.items():
+                    meta_vars[k] = v
+            return meta_vars
+
+        path_segments = [""] + os.path.dirname(file_path).split(os.sep)
         current_path = ""
         for seg in path_segments:
             current_path = os.path.join(current_path, seg)
@@ -180,7 +198,7 @@ class Runner(object):
         return meta_vars
 
     @classmethod
-    def run(cls):
+    def run(cls, argv=sys.argv[1:], worker=False):
         """Method sets up logger and decides on Syntribos control flow
 
         This is the method where control flow of Syntribos is decided
@@ -188,26 +206,32 @@ class Runner(object):
         as ```list_tests``` or ```run``` the respective method is called.
         """
         global result
-
-        cli.print_symbol()
-
+        cls.worker = worker
         # If we are initializing, don't look for a default config file
         if "init" in sys.argv:
             cls.setup_config()
         else:
-            cls.setup_config(use_file=True)
+            cls.setup_config(use_file=True, argv=argv)
         try:
             if CONF.sub_command.name == "init":
+                cli.print_symbol()
                 ENV.initialize_syntribos_env()
                 exit(0)
 
             elif CONF.sub_command.name == "list_tests":
+                cli.print_symbol()
                 cls.list_tests()
                 exit(0)
 
             elif CONF.sub_command.name == "download":
+                cli.print_symbol()
                 ENV.download_wrapper()
                 exit(0)
+
+            elif CONF.sub_command.name == "root":
+                print(ENV.get_syntribos_root())
+                exit(0)
+
         except AttributeError:
             print(
                 _(
@@ -237,15 +261,19 @@ class Runner(object):
         print(_("\nRunning Tests...:"))
         templates_dir = CONF.syntribos.templates
         if templates_dir is None:
-            print(_("Attempting to download templates from {}").format(
-                CONF.remote.templates_uri))
-            templates_path = remotes.get(CONF.remote.templates_uri)
-            try:
-                templates_dir = ContentType("r", 0)(templates_path)
-            except IOError:
-                print(_("Not able to open `%s`; please verify path, "
-                        "exiting...") % templates_path)
-                exit(1)
+            if cls.worker:
+                raise Exception("No templates directory was found in the "
+                                "config file.")
+            else:
+                print(_("Attempting to download templates from {}").format(
+                    CONF.remote.templates_uri))
+                templates_path = remotes.get(CONF.remote.templates_uri)
+                try:
+                    templates_dir = ContentType("r")(templates_path)
+                except IOError:
+                    print(_("Not able to open `%s`; please verify path, "
+                            "exiting...") % templates_path)
+                    exit(1)
 
         print(_("\nPress Ctrl-C to pause or exit...\n"))
         meta_vars = None
@@ -256,9 +284,16 @@ class Runner(object):
                 meta_path = os.path.dirname(file_path)
                 try:
                     cls.meta_dir_dict[meta_path] = json.loads(file_content)
-                except Exception:
-                    print("Unable to parse %s, skipping..." % file_path)
-
+                except json.decoder.JSONDecodeError:
+                    _full_path = os.path.abspath(file_path)
+                    print(syntribos.SEP)
+                    print(
+                        "\n"
+                        "*** The JSON parser raised an exception when parsing "
+                        "{}. Check that the file contains "
+                        "correctly formatted JSON data. ***\n".format(
+                            _full_path)
+                    )
         for file_path, req_str in templates_dir:
             if "meta.json" in file_path:
                 continue
@@ -266,9 +301,8 @@ class Runner(object):
             LOG = cls.get_logger(file_path)
             CONF.log_opt_values(LOG, logging.DEBUG)
             if not file_path.endswith(".template"):
-                LOG.warning(
-                    _LW('file.....:%s (SKIPPED - not a .template file)'),
-                    file_path)
+                LOG.warning('file.....:%s (SKIPPED - not a .template file)',
+                            file_path)
                 continue
 
             test_names = [t for (t, i) in list_of_tests]  # noqa
@@ -290,7 +324,8 @@ class Runner(object):
                             req_str, dry_run_output, meta_vars)
 
         if CONF.sub_command.name == "run":
-            result.print_result(cls.start_time)
+            result.print_result(cls.start_time, cls.log_path)
+            cls.result = result
             cleanup.delete_temps()
         elif CONF.sub_command.name == "dry_run":
             cls.dry_run_report(dry_run_output)
@@ -319,7 +354,7 @@ class Runner(object):
             except Exception as e:
                 print("\nError in parsing template:\n \t{0}\n".format(
                     traceback.format_exc()))
-                LOG.error(_LE("Error in parsing template:"))
+                LOG.error("Error in parsing template:")
                 output["failures"].append({
                     "file": file_path,
                     "error": e.__str__()
@@ -328,16 +363,20 @@ class Runner(object):
                 print(_("\nRequest sucessfully generated!\n"))
                 output["successes"].append(file_path)
 
-            test_cases = list(test_class.get_test_cases(file_path, req_str))
+            test_cases = list(
+                test_class.get_test_cases(file_path, req_str, meta_vars)
+            )
             if len(test_cases) > 0:
                 for test in test_cases:
                     if test:
-                        cls.run_test(test, result)
+                        cls.run_test(test)
 
     @classmethod
     def dry_run_report(cls, output):
         """Reports the dry run through a formatter."""
-        formatter_types = {"json": JSONFormatter(result)}
+        formatter_types = {
+            "json": JSONFormatter(result),
+        }
         formatter = formatter_types[CONF.output_format]
         formatter.report(output)
 
@@ -360,6 +399,7 @@ class Runner(object):
 
         :return: None
         """
+        pool = ThreadPool(CONF.syntribos.threads)
         try:
             template_start_time = time.time()
             failures = 0
@@ -368,8 +408,7 @@ class Runner(object):
             for test_name, test_class in list_of_tests:
                 test_class.test_id = cls.current_test_id
                 cls.current_test_id += 5
-                log_string = "[{test_id}]  :  {name}".format(
-                    test_id=test_class.test_id, name=test_name)
+
                 result_string = "[{test_id}]  :  {name}".format(
                     test_id=cli.colorize(
                         test_class.test_id, color="green"),
@@ -378,51 +417,44 @@ class Runner(object):
                     result_string = result_string.ljust(55)
                 else:
                     result_string = result_string.ljust(60)
-                LOG.debug(log_string)
                 try:
-                    test_class.send_init_request(file_path, req_str, meta_vars)
+                    test_class.create_init_request(file_path, req_str,
+                                                   meta_vars)
                 except Exception:
                     print(_(
                         "Error in parsing template:\n %s\n"
                     ) % traceback.format_exc())
-                    LOG.error(_LE("Error in parsing template:"))
+                    LOG.error("Error in parsing template:")
                     break
                 test_cases = list(
-                    test_class.get_test_cases(file_path, req_str))
-                if len(test_cases) > 0:
+                    test_class.get_test_cases(file_path, req_str, meta_vars))
+                total_tests = len(test_cases)
+                if total_tests > 0:
+                    log_string = "[{test_id}]  :  {name}".format(
+                        test_id=test_class.test_id, name=test_name)
+                    LOG.debug(log_string)
+                    last_failures = result.stats['unique_failures']
+                    last_errors = result.stats['errors']
                     p_bar = cli.ProgressBar(
-                        message=result_string, total_len=len(test_cases))
-                    last_failures = result.stats["failures"]
-                    last_errors = result.stats["errors"]
-                    for test in test_cases:
-                        if test:
-                            cls.run_test(test, result)
-                            p_bar.increment(1)
-                        p_bar.print_bar()
-                        failures = result.stats["failures"] - last_failures
-                        errors = result.stats["errors"] - last_errors
-                        total_tests = len(test_cases)
-                        if failures > total_tests * 0.90:
-                            # More than 90 percent failure
-                            failures = cli.colorize(failures, "red")
-                        elif failures > total_tests * 0.45:
-                            # More than 45 percent failure
-                            failures = cli.colorize(failures, "yellow")
-                        elif failures > total_tests * 0.15:
-                            # More than 15 percent failure
-                            failures = cli.colorize(failures, "blue")
+                        message=result_string, total_len=total_tests)
+                    test_class.send_init_request(file_path, req_str, meta_vars)
+
+                    # This line runs the tests
+                    pool.map(lambda t: cls.run_test(t, p_bar), test_cases)
+
+                    failures = result.stats['unique_failures'] - last_failures
+                    errors = result.stats['errors'] - last_errors
+                    failures_str = cli.colorize_by_percent(
+                        failures, total_tests)
+
                     if errors:
-                        last_failures = result.stats["failures"]
-                        last_errors = result.stats["errors"]
-                        errors = cli.colorize(errors, "red")
+                        errors_str = cli.colorize(errors, "red")
                         print(_(
                             "  :  %(fail)s Failure(s), %(err)s Error(s)\r") % {
-                                "fail": failures, "err": errors})
+                                "fail": failures_str, "err": errors_str})
                     else:
-                        last_failures = result.stats["failures"]
-                        print(
-                            _(
-                                "  : %s Failure(s), 0 Error(s)\r") % failures)
+                        print(_(
+                            "  : %s Failure(s), 0 Error(s)\r") % failures_str)
 
             run_time = time.time() - template_start_time
             LOG.info(_("Run time: %s sec."), run_time)
@@ -441,26 +473,34 @@ class Runner(object):
                     result.print_result(cls.start_time)
                     cleanup.delete_temps()
                     print(_("Exiting..."))
+                    pool.close()
+                    pool.join()
                     exit(0)
                 print(_('Resuming...'))
             except KeyboardInterrupt:
                 result.print_result(cls.start_time)
                 cleanup.delete_temps()
                 print(_("Exiting..."))
+                pool.close()
+                pool.join()
                 exit(0)
 
     @classmethod
-    def run_test(cls, test, result):
+    def run_test(cls, test, p_bar=None):
         """Create a new test suite, add a test, and run it
 
         :param test: The test to add to the suite
         :param result: The result object to append to
         :type result: :class:`syntribos.result.IssueTestResult`
-        :param bool dry_run: (OPTIONAL) Only print out test names
         """
-        suite = unittest.TestSuite()
-        suite.addTest(test("run_test_case"))
-        suite.run(result)
+        if test:
+            suite = unittest.TestSuite()
+            suite.addTest(test("run_test_case"))
+            suite.run(result)
+            if p_bar:
+                with lock:
+                    p_bar.increment(1)
+                    p_bar.print_bar()
 
 
 def entry_point():

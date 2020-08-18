@@ -38,7 +38,7 @@ class BaseFuzzTestCase(base.BaseTestCase):
         payloads = CONF.syntribos.payloads
         if not payloads:
             payloads = remotes.get(CONF.remote.payloads_uri)
-        content = ContentType('r', 0)(payloads)
+        content = ContentType('r')(payloads)
         for file_path, _ in content:
             if file_path.endswith(".txt"):
                 file_dir = os.path.split(file_path)[0]
@@ -49,7 +49,7 @@ class BaseFuzzTestCase(base.BaseTestCase):
                 path = cls.data_key
             else:
                 path = os.path.join(payloads, file_name or cls.data_key)
-            with open(path, "rb") as fp:
+            with open(path, "r") as fp:
                 return fp.read().splitlines()
         except (IOError, AttributeError, TypeError) as e:
             LOG.error("Exception raised: {}".format(e))
@@ -67,6 +67,9 @@ class BaseFuzzTestCase(base.BaseTestCase):
             headers=cls.request.headers,
             params=cls.request.params,
             data=cls.request.data)
+
+        if not hasattr(cls.request, 'body'):
+            cls.request.body = cls.request.data
         cls.test_req = cls.request
 
         if cls.test_resp is None or "EXCEPTION_RAISED" in cls.test_signals:
@@ -88,7 +91,6 @@ class BaseFuzzTestCase(base.BaseTestCase):
         self.run_default_checks() in order to test for the Issues
         defined here
         """
-
         if "HTTP_STATUS_CODE_5XX" in self.test_signals:
             self.register_issue(
                 defect_type="500_errors",
@@ -122,11 +124,8 @@ class BaseFuzzTestCase(base.BaseTestCase):
         self.run_default_checks()
 
     @classmethod
-    def get_test_cases(cls, filename, file_content):
+    def get_test_cases(cls, filename, file_content, meta_vars):
         """Generates new TestCases for each fuzz string
-
-        First, sends a baseline (non-fuzzed) request, storing it in
-        cls.init_resp.
 
         For each string returned by cls._get_strings(), yield a TestCase class
         for the string as an extension to the current TestCase class. Every
@@ -144,7 +143,8 @@ class BaseFuzzTestCase(base.BaseTestCase):
                 filename=filename, test_name=cls.test_name)
 
         fr = syntribos.tests.fuzz.datagen.fuzz_request(
-            cls.init_req, cls._get_strings(), cls.test_type, prefix_name)
+            cls.init_req, cls._get_strings(), cls.parameter_location,
+            prefix_name)
         for fuzz_name, request, fuzz_string, param_path in fr:
             yield cls.extend_class(fuzz_name, fuzz_string, param_path,
                                    {"request": request})
@@ -196,9 +196,10 @@ class BaseFuzzTestCase(base.BaseTestCase):
 
         issue.request = self.test_req
         issue.response = self.test_resp
+        issue.template_path = self.template_path
+
         issue.test_type = self.test_name
-        prepared_copy = self.init_req.get_prepared_copy()
-        url_components = urlparse(prepared_copy.url)
+        url_components = urlparse(self.prepared_init_req.url)
         issue.target = url_components.netloc
         issue.path = url_components.path
         issue.init_signals = self.init_signals
@@ -211,7 +212,7 @@ class BaseFuzzTestCase(base.BaseTestCase):
 
         issue.impacted_parameter = ImpactedParameter(
             method=issue.request.method,
-            location=self.test_type,
+            location=self.parameter_location,
             name=self.param_path,
             value=self.fuzz_string)
 

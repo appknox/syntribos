@@ -74,7 +74,7 @@ class HTTPParserUnittest(testtools.TestCase):
     def test_data_parse_vanilla_json(self):
         """Tests parsing valid JSON data."""
         lines = ['{"a": "val", "b": "val2"}']
-        dat = parser._parse_data(lines)
+        dat, dat_type = parser._parse_data(lines)
         self.assertEqual({"a": "val", "b": "val2"}, dat)
 
     def test_data_parse_invalid_json(self):
@@ -88,7 +88,7 @@ class HTTPParserUnittest(testtools.TestCase):
             '<?xml version="1.0" encoding="UTF-8"?>',
             '<note type="hi"><to>Tove</to><from>Jani</from></note>'
         ]
-        dat = parser._parse_data(lines)
+        dat, dat_type = parser._parse_data(lines)
         self.assertEqual("note", dat.tag)
         self.assertEqual({"type": "hi"}, dat.attrib)
         self.assertEqual("to", dat[0].tag)
@@ -98,37 +98,24 @@ class HTTPParserUnittest(testtools.TestCase):
         self.assertEqual("Jani", dat[1].text)
         self.assertEqual({}, dat[1].attrib)
 
-    def test_data_parse_invalid_xml(self):
-        """Tests parsing invalid XML data."""
-        lines = [
-            '<?xml version="1.0" encoding="UTF-8"?>',
-            '<note type="hi"><to>Tove<from></to><from>Jani</from></note>'
-        ]
-        self.assertRaises(TypeError, parser._parse_data, lines)
-
     def test_data_parse_vanilla_postdat(self):
         """Tests parsing valid POST (form) data."""
         lines = ["var=val&var2=val2"]
-        dat = parser._parse_data(lines)
+        dat, dat_type = parser._parse_data(lines)
         self.assertEqual("var=val&var2=val2", dat)
-
-    def test_data_parse_invalid_postdat(self):
-        """Tests parsing invalid POST (form) data."""
-        lines = ["var = 1, var2 = 2"]
-        self.assertRaises(TypeError, parser._parse_data, lines)
 
     def test_call_external_get_uuid(self):
         """Tests calling 'get_uuid' in URL string."""
         string = 'GET /v1/CALL_EXTERNAL|'
         string += 'syntribos.extensions.random_data.client:get_uuid:[]|'
         parsed_string = parser.call_external_functions(string)
-        self.assertRegex(parsed_string, "GET /v1/[a-f0-9]+$")
+        self.assertRegex(parsed_string, r"GET /v1/[a-f0-9]+$")
 
     def test_call_external_uuid_uuid4(self):
         """Tests calling 'uuid.uuid4()' in URL string."""
         string = 'GET /v1/CALL_EXTERNAL|uuid:uuid4:[]|'
         parsed_string = parser.call_external_functions(string)
-        self.assertRegex(parsed_string, "GET /v1/[a-f0-9\-]+$")
+        self.assertRegex(parsed_string, r"GET /v1/[a-f0-9\-]+$")
 
     def test_call_external_invalid_module(self):
         """Tests calling invalid module in URL string."""

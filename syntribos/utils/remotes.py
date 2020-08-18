@@ -19,11 +19,12 @@ import tempfile
 
 from oslo_config import cfg
 
+from syntribos._i18n import _
 from syntribos.clients.http.client import SynHTTPClient
-from syntribos._i18n import _, _LI, _LE, _LW   # noqa
 
 CONF = cfg.CONF
 LOG = logging.getLogger(__name__)
+LOG.addHandler(logging.StreamHandler())
 temp_dirs = []
 remote_dirs = []
 
@@ -61,8 +62,9 @@ def download(uri, cache_dir=None):
         cache_dir = tempfile.mkdtemp()
         temp_dirs.append(cache_dir)
     remote_dirs.append(cache_dir)
-    LOG.debug(_LI("Remote file location: %s") % remote_dirs)
-    resp, _ = SynHTTPClient().request("GET", uri)
+    LOG.debug("Remote file location: %s", remote_dirs)
+    _kwargs = {'allow_redirects': True}
+    resp, _ = SynHTTPClient().request("GET", uri, requestslib_kwargs=_kwargs)
     os.chdir(cache_dir)
     saved_umask = os.umask(0o77)
     fname = uri.split("/")[-1]
@@ -71,7 +73,7 @@ def download(uri, cache_dir=None):
             fh.write(resp.content)
         return os.path.abspath(fname)
     except IOError:
-        LOG.error(_LE("IOError in writing the downloaded file to disk."))
+        LOG.error("IOError in writing the downloaded file to disk.")
     finally:
         os.umask(saved_umask)
 
@@ -87,8 +89,7 @@ def extract_tar(abs_path):
     try:
         os.mkdir("remote")
     except OSError:
-        LOG.error(_LE(
-            "path exists already, not creating remote directory."))
+        LOG.error("Path exists already, not creating remote directory.")
     remote_path = os.path.abspath("remote")
 
     def safe_paths(tar_meta):
@@ -108,7 +109,7 @@ def extract_tar(abs_path):
         with tarfile.open(tar_file, mode="r:gz") as tarf:
             tarf.extractall(path=remote_path, members=safe_paths(tarf))
     except tarfile.ExtractError as e:
-        LOG.error(_LE("Unable to extract the file: %s") % e)
+        LOG.error("Unable to extract the file: %s", e)
         raise
     os.remove(abs_path)
     return remote_path
@@ -128,7 +129,7 @@ def get(uri, cache_dir=None):
             temp = tempfile.TemporaryFile(dir=os.path.abspath(user_base_dir))
             temp.close()
         except OSError:
-            LOG.error(_LE("Failed to write remote files to: %s") %
+            LOG.error("Failed to write remote files to: %s",
                       os.path.abspath(user_base_dir))
             exit(1)
         abs_path = download(uri, os.path.abspath(user_base_dir))

@@ -13,14 +13,13 @@
 # limitations under the License.
 # pylint: skip-file
 import logging
-import sys
-
 from oslo_config import cfg
 
 import syntribos
-from syntribos._i18n import _, _LE, _LW   # noqa
+from syntribos._i18n import _
 from syntribos.utils.file_utils import ContentType
 from syntribos.utils.file_utils import ExistingDirType
+
 
 CONF = cfg.CONF
 LOG = logging.getLogger(__name__)
@@ -50,7 +49,6 @@ def handle_config_exception(exc):
     if msg:
         LOG.warning(msg)
         print(syntribos.SEP)
-        sys.exit(0)
     else:
         LOG.exception(exc)
 
@@ -73,14 +71,14 @@ def sub_commands(sub_parser):
         help=_(
             "Skip prompts for configurable options, force initialization "
             "even if syntribos believes it has already been initialized. If "
-            "--custom_install_root isn't specified, we will use the default "
+            "--custom_root isn't specified, we will use the default "
             "options. WARNING: This is potentially destructive! Use with "
             "caution."))
     init_parser.add_argument(
         "--custom_install_root", dest="custom_install_root",
-        help=_("Skip prompts for configurable options, and initialize "
-               "syntribos in the specified directory. Can be combined "
-               "with --force to overwrite existing files."))
+        help=_("(DEPRECATED) Skip prompts for configurable options, and "
+               "initialize  syntribos in the specified directory. Can be "
+               "combined with --force to overwrite existing files."))
     init_parser.add_argument(
         "--no_downloads", dest="no_downloads", action="store_true",
         help=_("Disable the downloading of payload files as part of the "
@@ -107,6 +105,8 @@ def sub_commands(sub_parser):
     sub_parser.add_parser("dry_run",
                           help=_("Dry run syntribos with given config"
                                  "options"))
+    sub_parser.add_parser("root",
+                          help=_("Print syntribos root directory"))
 
 
 def list_opts():
@@ -143,6 +143,13 @@ def register_opts():
         OPTS_REGISTERED = True
 
 
+def list_payment_system_opts():
+    return [
+        cfg.StrOpt('ran', default='', help='Rackspace Account Number'),
+        cfg.StrOpt('alt_ran', default='', help='Alternate RAN')
+    ]
+
+
 def list_cli_opts():
     return [
         cfg.SubCommandOpt(name="sub_command",
@@ -157,7 +164,8 @@ def list_cli_opts():
                         default=[""], sample_default=["SQL", "XSS"],
                         help=_("Test types to be excluded from "
                                "current run against the target API")),
-        cfg.BoolOpt("colorize", dest="colorize", short="cl", default=False,
+        cfg.BoolOpt("colorize", dest="colorize", short="cl",
+                    default=True,
                     help=_("Enable color in syntribos terminal output")),
         cfg.StrOpt("outfile", short="o",
                    sample_default="out.json", help=_("File to print "
@@ -172,7 +180,17 @@ def list_cli_opts():
         cfg.StrOpt("min-confidence", dest="min_confidence", short="C",
                    default="LOW", choices=syntribos.RANKING,
                    help=_("Select a minimum confidence for reported "
-                          "defects"))
+                          "defects")),
+        cfg.BoolOpt("stacktrace", dest="stacktrace", default=True,
+                    help=_("Select if Syntribos outputs a stacktrace "
+                           " if an exception is raised")),
+        cfg.StrOpt(
+            "custom_root", dest="custom_root",
+            help=_("Filesystem location for syntribos root directory, "
+                   "containing logs, templates, payloads, config files. "
+                   "Creates directories and skips interactive prompts when "
+                   "used with 'syntribos init'"),
+            deprecated_group="init", deprecated_name="custom_install_root")
     ]
 
 
@@ -194,7 +212,11 @@ def list_syntribos_opts():
         cfg.StrOpt("endpoint", default="",
                    sample_default="http://localhost/app",
                    help=_("The target host to be tested")),
-        cfg.Opt("templates", type=ContentType("r", 0),
+        cfg.IntOpt("threads", default=16,
+                   sample_default="16",
+                   help=_("Maximum number of threads syntribos spawns "
+                          "(experimental)")),
+        cfg.Opt("templates", type=ContentType("r"),
                 default="",
                 sample_default="~/.syntribos/templates",
                 help=_("A directory of template files, or a single "
@@ -216,7 +238,12 @@ def list_syntribos_opts():
                 help=_(
                     "The root directory where the subfolders that make up"
                     " syntribos' environment (logs, templates, payloads, "
-                    "configuration files, etc.)")),
+                    "configuration files, etc.)"),
+                deprecated_for_removal=True),
+        cfg.StrOpt("meta_vars", sample_default="/path/to/meta.json",
+                   help=_(
+                       "The path to a meta variable definitions file, which "
+                       "will be used when parsing your templates")),
     ]
 
 

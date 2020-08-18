@@ -16,7 +16,6 @@ from functools import reduce
 import importlib
 import json
 import re
-import string
 import sys
 import types
 import uuid
@@ -26,8 +25,9 @@ from oslo_config import cfg
 import six
 from six.moves import html_parser
 from six.moves.urllib import parse as urlparse
+import yaml
 
-from syntribos._i18n import _, _LE, _LW   # noqa
+from syntribos._i18n import _
 
 CONF = cfg.CONF
 _iterators = {}
@@ -36,7 +36,7 @@ _string_var_objs = {}
 
 class RequestCreator(object):
     ACTION_FIELD = "ACTION_FIELD:"
-    EXTERNAL = r"CALL_EXTERNAL\|([^:]+?):([^:]+?):([^|]+?)\|"
+    EXTERNAL = r"CALL_EXTERNAL\|([^:]+?):([^:]+?)(?::([^|]+?))?\|"
     METAVAR = r"(\|[^\|]*\|)"
     FUNC_WITH_ARGS = r"([^:]+):([^:]+):(\[.+\])"
     FUNC_NO_ARGS = r"([^:]+):([^:]+)"
@@ -52,8 +52,7 @@ class RequestCreator(object):
         :returns: RequestObject with method, url, params, etc. for use by
                   runner
         """
-        if meta_vars:
-            cls.meta_vars = meta_vars
+        cls.meta_vars = meta_vars
         string = cls.call_external_functions(string)
         action_field = str(uuid.uuid4()).replace("-", "")
         string = string.replace(cls.ACTION_FIELD, action_field)
@@ -65,13 +64,18 @@ class RequestCreator(object):
             index = index + 1
         method, url, params, version = cls._parse_url_line(lines[0], endpoint)
         headers = cls._parse_headers(lines[1:index])
-        data = cls._parse_data(lines[index + 1:])
+        content_type = ''
+        for h in headers:
+            if h.upper() == 'CONTENT-TYPE':
+                content_type = headers[h]
+                break
+        data, data_type = cls._parse_data(lines[index + 1:], content_type)
         return RequestObject(
             method=method, url=url, headers=headers, params=params, data=data,
-            action_field=action_field)
+            action_field=action_field, data_type=data_type)
 
     @classmethod
-    def _create_var_obj(cls, var):
+    def _create_var_obj(cls, var, prefix="", suffix=""):
         """Given the name of a variable, creates VariableObject
 
         :param str var: name of the variable in meta.json
@@ -79,6 +83,13 @@ class RequestCreator(object):
         :returns: VariableObject holding the attributes defined in the JSON
                   object read in from meta.json
         """
+        if not cls.meta_vars:
+            msg = ("Template contains reference to meta variable of the form "
+                   "'|{}|', but no valid meta.json file was found in the "
+                   "templates directory. Check that your templates reference "
+                   "a meta.json file that is correctly formatted.".format(var))
+            raise TemplateParseException(msg)
+
         if var not in cls.meta_vars:
             msg = _("Expected to find %s in meta.json, but didn't. "
                     "Check your templates") % var
@@ -86,7 +97,7 @@ class RequestCreator(object):
         var_dict = cls.meta_vars[var]
         if "type" in var_dict:
             var_dict["var_type"] = var_dict.pop("type")
-        var_obj = VariableObject(var, **var_dict)
+        var_obj = VariableObject(var, prefix=prefix, suffix=suffix, **var_dict)
         return var_obj
 
     @classmethod
@@ -160,12 +171,11 @@ class RequestCreator(object):
             if isinstance(value, six.string_types):
                 match = re.search(cls.METAVAR, value)
                 if match:
+                    start, end = match.span()
+                    prefix = value[:start]
+                    suffix = value[end:]
                     var_str = match.group(0).strip("|")
-                    if var_str != value.strip("|%s" % string.whitespace):
-                        msg = _("Meta-variable references cannot come in the "
-                                "middle of the value %s") % value
-                        raise TemplateParseException(msg)
-                    val_obj = cls._create_var_obj(var_str)
+                    val_obj = cls._create_var_obj(var_str, prefix, suffix)
                     if key in dic:
                         dic[key] = val_obj
                     elif new_key in dic:
@@ -241,37 +251,63 @@ class RequestCreator(object):
         return cls._replace_dict_variables(headers)
 
     @classmethod
-    def _parse_data(cls, lines):
+    def _parse_data(cls, lines, content_type=""):
         """Parse the body of the HTTP request (e.g. POST variables)
 
         :param list lines: lines of the HTTP body
+        :param content_type: Content-type header in template if any
 
         :returns: object representation of body data (JSON or XML)
         """
         postdat_regex = r"([\w%]+=[\w%]+&?)+"
         data = "\n".join(lines).strip()
+        data_type = "text"
         if not data:
-            return ""
+            return '', None
+
         try:
             data = json.loads(data)
             # TODO(cneill): Make this less hacky
             if isinstance(data, list):
                 data = json.dumps(data)
             if isinstance(data, dict):
-                return cls._replace_dict_variables(data)
+                return cls._replace_dict_variables(data), 'json'
             else:
-                return cls._replace_str_variables(data)
+                return cls._replace_str_variables(data), 'str'
         except TemplateParseException:
             raise
         except (TypeError, ValueError):
+            if 'json' in content_type:
+                msg = ("The Content-Type header in this template is %s but "
+                       "syntribos cannot parse the request body as json" %
+                       content_type)
+                raise TemplateParseException(msg)
             try:
                 data = ElementTree.fromstring(data)
+                data_type = 'xml'
             except Exception:
-                if not re.match(postdat_regex, data):
-                    raise TypeError(_("Unknown data format"))
+                if 'xml' in content_type:
+                    msg = ("The Content-Type header in this template is %s "
+                           "but syntribos cannot parse the request body as xml"
+                           % content_type)
+                    raise TemplateParseException(msg)
+                try:
+                    data = yaml.safe_load(data)
+                    data_type = 'yaml'
+                except yaml.YAMLError:
+                    if 'yaml' in content_type:
+                        msg = ("The Content-Type header in this template is %s"
+                               "but syntribos cannot parse the request body as"
+                               "yaml"
+                               % content_type)
+                        raise TemplateParseException(msg)
+                    if not re.match(postdat_regex, data):
+                        raise TypeError(_("Make sure that your request body is"
+                                          "valid JSON, XML, or YAML data - be "
+                                          "sure to check for typos."))
         except Exception:
             raise
-        return data
+        return data, data_type
 
     @classmethod
     def call_external_functions(cls, string):
@@ -290,7 +326,7 @@ class RequestCreator(object):
                 break
             dot_path = match.group(1)
             func_name = match.group(2)
-            arg_list = match.group(3)
+            arg_list = match.group(3) or "[]"
             mod = importlib.import_module(dot_path)
             func = getattr(mod, func_name)
             args = json.loads(arg_list)
@@ -327,12 +363,7 @@ class RequestCreator(object):
 
                 val = func(*args)
             except Exception:
-                msg = _("The reference to the function %s failed to parse "
-                        "correctly, please check the documentation to ensure "
-                        "your function import string adheres to the proper "
-                        "format") % string
-                raise TemplateParseException(msg)
-
+                raise
         else:
             try:
                 func_lst = string.split(":")
@@ -363,7 +394,7 @@ class VariableObject(object):
 
     def __init__(self, name, var_type="", args=[], val="", fuzz=True,
                  fuzz_types=[], min_length=0, max_length=sys.maxsize,
-                 url_encode=False, **kwargs):
+                 url_encode=False, prefix="", suffix="", **kwargs):
         if var_type and var_type.lower() not in self.VAR_TYPES:
             msg = _("The meta variable %(name)s has a type of %(var)s which "
                     "syntribos does not"
@@ -379,6 +410,8 @@ class VariableObject(object):
         self.min_length = min_length
         self.max_length = max_length
         self.url_encode = url_encode
+        self.prefix = prefix
+        self.suffix = suffix
         self.function_return_value = None
 
     def __repr__(self):
@@ -397,7 +430,6 @@ class RequestHelperMixin(object):
         self.headers = ""
         self.params = ""
         self.data = ""
-        self.url = ""
         self.url = ""
 
     @classmethod
@@ -433,9 +465,11 @@ class RequestHelperMixin(object):
                     dic[new_key] = val
             if isinstance(val, VariableObject):
                 if key in dic:
-                    dic[key] = RequestCreator.replace_one_variable(val)
+                    repl_val = RequestCreator.replace_one_variable(val)
+                    dic[key] = val.prefix + repl_val + val.suffix
                 elif new_key in dic:
-                    dic[new_key] = RequestCreator.replace_one_variable(val)
+                    repl_val = RequestCreator.replace_one_variable(val)
+                    dic[new_key] = val.prefix + repl_val + val.suffix
             if isinstance(val, dict):
                 cls._run_iters_dict(val, action_field)
             elif isinstance(val, list):
@@ -466,21 +500,25 @@ class RequestHelperMixin(object):
         return ele
 
     @staticmethod
-    def _string_data(data):
+    def _string_data(data, data_type):
         """Replace various objects types with string representations."""
-        if isinstance(data, dict):
+        if data_type == 'json':
             return json.dumps(data)
-        elif isinstance(data, ElementTree.Element):
+        elif data_type == 'xml':
+            if isinstance(data, str):
+                return data
             str_data = ElementTree.tostring(data)
             # No way to stop tostring from HTML escaping even if we wanted
             h = html_parser.HTMLParser()
             return h.unescape(str_data.decode())
+        elif data_type == 'yaml':
+            return yaml.dump(data)
         else:
             return data
 
     @staticmethod
     def _replace_iter(string):
-        """Fuzz a string."""
+        """Replaces action field IDs and meta-variable references."""
         if not isinstance(string, six.string_types):
             return string
         for k, v in list(_iterators.items()):
@@ -505,7 +543,7 @@ class RequestHelperMixin(object):
         identifier name so that the client only sees example.com/{123} when
         it sends the request
         """
-        return re.sub(r"{[\w]+:", "{", string)
+        return re.sub(r"(?!{urn:){[\w]+:", "{", string)
 
     def prepare_request(self):
         """Prepare a request for sending off
@@ -517,7 +555,7 @@ class RequestHelperMixin(object):
         self.data = self._run_iters(self.data, self.action_field)
         self.headers = self._run_iters(self.headers, self.action_field)
         self.params = self._run_iters(self.params, self.action_field)
-        self.data = self._string_data(self.data)
+        self.data = self._string_data(self.data, self.data_type)
         self.url = self._run_iters(self.url, self.action_field)
         self.url = self._remove_braces(self._remove_attr_names(self.url))
 
@@ -554,7 +592,8 @@ class RequestObject(RequestHelperMixin):
                  headers=None,
                  params=None,
                  data=None,
-                 sanitize=False):
+                 sanitize=False,
+                 data_type=None):
         self.method = method
         self.url = url
         self.action_field = action_field
@@ -562,3 +601,4 @@ class RequestObject(RequestHelperMixin):
         self.params = params
         self.data = data
         self.sanitize = sanitize
+        self.data_type = data_type

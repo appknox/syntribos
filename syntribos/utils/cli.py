@@ -11,8 +11,8 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-from __future__ import division
-from __future__ import unicode_literals
+
+
 from math import ceil
 import sys
 
@@ -26,22 +26,6 @@ CONF = cfg.CONF
 def print_symbol():
     """Syntribos radiation symbol."""
     symbol = """               Syntribos
-                xxxxxxx
-           x xxxxxxxxxxxxx x
-        x     xxxxxxxxxxx     x
-               xxxxxxxxx
-     x          xxxxxxx          x
-                 xxxxx
-    x             xxx             x
-                   x
-   xxxxxxxxxxxxxxx   xxxxxxxxxxxxxxx
-    xxxxxxxxxxxxx     xxxxxxxxxxxxx
-     xxxxxxxxxxx       xxxxxxxxxxx
-      xxxxxxxxx         xxxxxxxxx
-        xxxxxx           xxxxxx
-          xxx             xxx
-              x         x
-                   x
       === Automated API Scanning  ==="""
     print(syntribos.SEP)
     print(symbol)
@@ -62,8 +46,17 @@ def colorize(string, color="nocolor"):
                                                         color, 0))
 
 
+def colorize_by_percent(amount, total, high=0.5, medium=0):
+    if amount > total * high:
+        return colorize(amount, "red")
+    elif amount > total * medium:
+        return colorize(amount, "yellow")
+    else:
+        return str(amount)
+
+
 class ProgressBar(object):
-    """A simple progressBar.
+    """A simple progressBar. Written as a singleton.
 
     A simple generic progress bar like many others.
     :param int total_len: total_len value, when progress is 100 %
@@ -102,10 +95,11 @@ class ProgressBar(object):
 
         :returns: formatted progress bar string
         """
-        bar_width = int(ceil(self.present_level / self.total_len * self.width))
+        bar_width = int(
+            ceil(self.present_level / float(self.total_len) * self.width))
         empty_char = self.empty_char * (self.width - bar_width)
         fill_char = self.fill_char * bar_width
-        percentage = int(self.present_level / self.total_len * 100)
+        percentage = int(self.present_level / float(self.total_len) * 100)
         return "{message}\t\t|{fill_char}{empty_char}|  {percentage} %".format(
             message=self.message, fill_char=fill_char,
             empty_char=empty_char, percentage=percentage)
