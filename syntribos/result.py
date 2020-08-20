@@ -252,10 +252,10 @@ class IssueTestResult(unittest.TextTestResult):
         formatter = formatter_types[output_format.lower()]
         formatter.report(self.output)
 
-    def print_result(self, start_time):
+    def print_result(self, start_time, log_path):
         """Prints test summary/stats (e.g. # failures) to stdout."""
         self.printErrors(CONF.output_format)
-        self.print_log_path_and_stats(start_time)
+        self.print_log_path_and_stats(start_time, log_path=log_path)
 
     def print_log_path_and_stats(self, start_time, log_path):
         """Print the path to the log folder for this run."""
