@@ -52,7 +52,9 @@ class BufferOverflowBody(base_fuzz.BaseFuzzTestCase):
                              "returned after a successful buffer overflow "
                              "attack, have been found in the response. This "
                              "could indicate a vulnerability to buffer "
-                             "overflow attacks.").format(failed_strings))
+                             "overflow attacks.").format(failed_strings),
+                failed_strings=failed_strings
+            )
 
         self.diff_signals.register(time_diff(self))
         if "TIME_DIFF_OVER" in self.diff_signals:

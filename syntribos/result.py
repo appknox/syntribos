@@ -89,6 +89,8 @@ class IssueTestResult(unittest.TextTestResult):
         """
         lock.acquire()
         for issue in test.failures:
+            response = issue.response
+            response_dict = {} if response is None else issue.response_as_dict(response)
             self.raw_issues.append(issue)
             defect_type = issue.defect_type
             if any([
@@ -112,6 +114,7 @@ class IssueTestResult(unittest.TextTestResult):
                 if (f["url"] == url and f["defect_type"] == defect_type and
                         f["description"] == description):
                     failure_obj = f
+                    failure_obj["failed_strings"] = issue.failed_strings
                     break
             if not failure_obj:
                 failure_obj = {
@@ -121,6 +124,7 @@ class IssueTestResult(unittest.TextTestResult):
                     "failure_id": self.failure_id,
                     "instances": []
                 }
+                failure_obj["failed_strings"] = issue.failed_strings
                 self.failures.append(failure_obj)
                 self.failure_id += 1
 
@@ -166,6 +170,7 @@ class IssueTestResult(unittest.TextTestResult):
                             else:
                                 i["signals"][sig_type] = signals[sig_type]
                         i["strings"].add(payload_string)
+                        i["response"] = response_dict
                         instance_obj = i
                         break
 
@@ -176,7 +181,8 @@ class IssueTestResult(unittest.TextTestResult):
                         "severity": sev_rating,
                         "param": param,
                         "strings": set([payload_string]),
-                        "signals": signals
+                        "signals": signals,
+                        "response": response_dict,
                     }
                     failure_obj["instances"].append(instance_obj)
                     self.stats["unique_failures"] += 1
@@ -192,13 +198,15 @@ class IssueTestResult(unittest.TextTestResult):
                                     sig_type])
                             else:
                                 i["signals"][sig_type] = signals[sig_type]
+                        i["response"] = response_dict
                         instance_obj = i
                         break
                 if not instance_obj:
                     instance_obj = {
                         "confidence": conf_rating,
                         "severity": sev_rating,
-                        "signals": signals
+                        "signals": signals,
+                        "response": response_dict,
                     }
                     failure_obj["instances"].append(instance_obj)
                     self.stats["unique_failures"] += 1
