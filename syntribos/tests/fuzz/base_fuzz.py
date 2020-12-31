@@ -45,10 +45,10 @@ class BaseFuzzTestCase(base.BaseTestCase):
                 payloads = os.path.join(payloads, file_dir)
                 break
         try:
-            if os.path.isfile(cls.data_key):
-                path = cls.data_key
+            if hasattr(cls, "data_key"):
+                path = os.path.join(payloads, cls.data_key)
             else:
-                path = os.path.join(payloads, file_name or cls.data_key)
+                path = os.path.join(payloads, file_name)
             with open(path, "r") as fp:
                 return fp.read().splitlines()
         except (IOError, AttributeError, TypeError) as e:
