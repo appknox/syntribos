@@ -49,7 +49,9 @@ class JSONDepthOverflowBody(base_fuzz.BaseFuzzTestCase):
                     "The string(s): '{0}', is known to be commonly "
                     "returned after a successful overflow of the json"
                     " parsers depth limit. This could possibly "
-                    "result in a dos vulnerability.").format(failed_strings))
+                    "result in a dos vulnerability.").format(failed_strings),
+                failed_strings=failed_strings
+            )
 
         self.diff_signals.register(time_diff(self))
         if "TIME_DIFF_OVER" in self.diff_signals:

@@ -47,7 +47,9 @@ class SQLInjectionBody(base_fuzz.BaseFuzzTestCase):
                              "returned after a successful SQL injection attack"
                              ", have been found in the response. This could "
                              "indicate a vulnerability to SQL injection "
-                             "attacks.").format(failed_strings))
+                             "attacks.").format(failed_strings),
+                failed_strings=failed_strings
+            )
 
         self.diff_signals.register(time_diff(self))
         if "TIME_DIFF_OVER" in self.diff_signals:

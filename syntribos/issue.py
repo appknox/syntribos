@@ -42,7 +42,7 @@ class Issue(object):
 
     def __init__(self, defect_type, severity, description, confidence,
                  request=None, response=None, impacted_parameter=None,
-                 init_signals=[], test_signals=[], diff_signals=[]):
+                 init_signals=[], test_signals=[], diff_signals=[], failed_strings=None):
         self.defect_type = defect_type
         self.severity = severity
         self.description = description
@@ -53,6 +53,7 @@ class Issue(object):
         self.init_signals = init_signals
         self.test_signals = test_signals
         self.diff_signals = diff_signals
+        self.failed_strings = failed_strings if failed_strings else []
 
     def as_dict(self):
         """Convert the issue to a dict of values for outputting.

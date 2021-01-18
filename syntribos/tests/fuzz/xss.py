@@ -47,4 +47,6 @@ class XSSBody(base_fuzz.BaseFuzzTestCase):
                              "returned after a successful XSS "
                              "attack, have been found in the response. This "
                              "could indicate a vulnerability to XSS "
-                             "attacks.").format(failed_strings))
+                             "attacks.").format(failed_strings),
+                failed_strings=failed_strings
+            )

@@ -258,7 +258,7 @@ class BaseTestCase(unittest.TestCase):
                                 description=description)
 
         issue.request = self.test_req
-        issue.response = self.test_resp
+        issue.response = self.test_resp if self.test_resp else self.init_resp
         issue.template_path = self.template_path
         issue.parameter_location = self.parameter_location
         issue.test_type = self.test_name

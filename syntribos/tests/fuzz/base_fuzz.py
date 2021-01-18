@@ -169,7 +169,7 @@ class BaseFuzzTestCase(base.BaseTestCase):
         new_cls.param_path = param_path
         return new_cls
 
-    def register_issue(self, defect_type, severity, confidence, description):
+    def register_issue(self, defect_type, severity, confidence, description, failed_strings=None):
         """Adds an issue to the test's list of issues
 
         Creates a :class:`syntribos.issue.Issue` object, with given function
@@ -205,6 +205,7 @@ class BaseFuzzTestCase(base.BaseTestCase):
         issue.init_signals = self.init_signals
         issue.test_signals = self.test_signals
         issue.diff_signals = self.diff_signals
+        issue.failed_strings = failed_strings if failed_strings else []
         if 'content-type' in self.init_req.headers:
             issue.content_type = self.init_req.headers['content-type']
         else:
