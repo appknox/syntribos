@@ -501,6 +501,13 @@ class Runner(object):
                 with lock:
                     p_bar.increment(1)
                     p_bar.print_bar()
+    
+    @classmethod
+    def run_test_on_result(cls, test, result):
+        if test:
+            suite = unittest.TestSuite()
+            suite.addTest(test("run_test_case"))
+            suite.run(result)
 
 
 def entry_point():

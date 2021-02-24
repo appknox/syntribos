@@ -96,11 +96,10 @@ class Issue(object):
         :returns: dictionary of HTTP request data
         """
         return {
-            'url': req.path_url,
+            'url': req.url,
             'method': req.method,
-            'headers': dict(req.headers),
-            'body': req.body,
-            'cookies': req._cookies.get_dict()
+            'headers': dict(req.headers) if req.headers else {},
+            'body': req.data,
         }
 
     def response_as_dict(self, res):

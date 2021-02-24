@@ -122,6 +122,13 @@ class BaseTestCase(unittest.TestCase):
         yield cls
 
     @classmethod
+    def get_test_cases_from_req_obj(cls, req_obj):
+        """
+        Returns tests for given TestCase class without request template
+        """
+        yield cls
+
+    @classmethod
     def create_init_request(cls, filename, file_content, meta_vars):
         """Parses template and creates init request object
 
@@ -137,6 +144,15 @@ class BaseTestCase(unittest.TestCase):
         cls.init_resp = None
         cls.init_signals = None
         cls.template_path = filename
+    
+    @classmethod
+    def set_init_request(cls, request_obj):
+        """
+        Set init request object
+        :param RequestObject request_obj: Request Object
+        """
+        cls.init_req = request_obj
+    
 
     @classmethod
     def send_init_request(cls, filename, file_content, meta_vars):
@@ -259,7 +275,7 @@ class BaseTestCase(unittest.TestCase):
 
         issue.request = self.test_req
         issue.response = self.test_resp if self.test_resp else self.init_resp
-        issue.template_path = self.template_path
+        # issue.template_path = self.template_path
         issue.parameter_location = self.parameter_location
         issue.test_type = self.test_name
         url_components = urlparse(self.init_resp.url)

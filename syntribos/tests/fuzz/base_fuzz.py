@@ -35,7 +35,8 @@ class BaseFuzzTestCase(base.BaseTestCase):
 
     @classmethod
     def _get_strings(cls, file_name=None):
-        payloads = CONF.syntribos.payloads
+        # payloads = CONF.syntribos.payloads
+        payloads = "/Users/scorpionk/.syntribos/payloads"
         if not payloads:
             payloads = remotes.get(CONF.remote.payloads_uri)
         content = ContentType('r')(payloads)
@@ -141,6 +142,25 @@ class BaseFuzzTestCase(base.BaseTestCase):
         else:
             prefix_name = "{filename}_{test_name}_".format(
                 filename=filename, test_name=cls.test_name)
+
+        fr = syntribos.tests.fuzz.datagen.fuzz_request(
+            cls.init_req, cls._get_strings(), cls.parameter_location,
+            prefix_name)
+        for fuzz_name, request, fuzz_string, param_path in fr:
+            yield cls.extend_class(fuzz_name, fuzz_string, param_path,
+                                   {"request": request})
+    
+    @classmethod
+    def get_test_cases_from_req_obj(cls, req_obj):
+        cls.failures = []
+        if hasattr(cls, 'data_key'):
+            prefix_name = "{filename}_{test_name}_{fuzz_file}_".format(
+                filename="",
+                test_name=cls.test_name,
+                fuzz_file=cls.data_key)
+        else:
+            prefix_name = "{filename}_{test_name}_".format(
+                filename="", test_name=cls.test_name)
 
         fr = syntribos.tests.fuzz.datagen.fuzz_request(
             cls.init_req, cls._get_strings(), cls.parameter_location,

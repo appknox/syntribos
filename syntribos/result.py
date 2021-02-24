@@ -101,13 +101,13 @@ class IssueTestResult(unittest.TextTestResult):
             self.raw_issues.append(issue)
             defect_type = issue.defect_type
             if any([
-                    True for x in CONF.syntribos.exclude_results
+                    True for x in ["500_errors", "length_diff"]
                     if x and x in defect_type
             ]):
                 continue
 
-            min_sev = syntribos.RANKING_VALUES[CONF.min_severity]
-            min_conf = syntribos.RANKING_VALUES[CONF.min_confidence]
+            min_sev = syntribos.RANKING_VALUES["LOW"]
+            min_conf = syntribos.RANKING_VALUES["LOW"]
             if issue.severity < min_sev or issue.confidence < min_conf:
                 continue
 
@@ -177,8 +177,8 @@ class IssueTestResult(unittest.TextTestResult):
                             else:
                                 i["signals"][sig_type] = signals[sig_type]
                         i["strings"].add(payload_string)
-                        i["response"] = response_dict
                         i["request"] = request
+                        i["response"] = response_dict
                         instance_obj = i
                         break
 
@@ -190,8 +190,8 @@ class IssueTestResult(unittest.TextTestResult):
                         "param": param,
                         "strings": set([payload_string]),
                         "signals": signals,
+                        "request": request,
                         "response": response_dict,
-                        "request": request
                     }
                     failure_obj["instances"].append(instance_obj)
                     self.stats["unique_failures"] += 1
@@ -207,8 +207,8 @@ class IssueTestResult(unittest.TextTestResult):
                                     sig_type])
                             else:
                                 i["signals"][sig_type] = signals[sig_type]
-                        i["response"] = response_dict
                         i["request"] = request
+                        i["response"] = response_dict
                         instance_obj = i
                         break
                 if not instance_obj:
@@ -216,8 +216,8 @@ class IssueTestResult(unittest.TextTestResult):
                         "confidence": conf_rating,
                         "severity": sev_rating,
                         "signals": signals,
+                        "request": request,
                         "response": response_dict,
-                        "request": request
                     }
                     failure_obj["instances"].append(instance_obj)
                     self.stats["unique_failures"] += 1
@@ -246,8 +246,8 @@ class IssueTestResult(unittest.TextTestResult):
                 "test": [self.getDescription(test)],
                 "error": err_str
             }
-            if CONF.stacktrace:
-                _e["stacktrace"] = [x.strip() for x in stacktrace]
+            # if CONF.stacktrace:
+            _e["stacktrace"] = [x.strip() for x in stacktrace]
             self.errors.append(_e)
             self.stats["errors"] += 1
 

@@ -37,6 +37,7 @@ def fuzz_request(req, strings, fuzz_type, name_prefix):
         (name, request, fuzzstring, ImpactedParameter name)
     :rtype: `tuple`
     """
+    print("attr value", getattr(req, fuzz_type))
     for name, data, stri, param_path in _fuzz_data(
             strings, getattr(req, fuzz_type), req.action_field, name_prefix):
         request_copy = req.get_copy()

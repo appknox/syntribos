@@ -76,7 +76,8 @@ def compress(content, threshold=512):
     :returns: Compressed String
     :rtype: str
     """
-    compression_enabled = CONF.logging.http_request_compression
+    # compression_enabled = CONF.logging.http_request_compression
+    compression_enabled = True
 
     if is_dict(content):
         for key in content:

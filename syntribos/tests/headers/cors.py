@@ -43,6 +43,15 @@ class CorsHeader(base.BaseTestCase):
             prepared_copy)
         cls.test_req = request_obj.get_prepared_copy()
         yield cls
+    
+    @classmethod
+    def get_test_cases_from_req_obj(cls, req_obj):
+        prepared_copy = req_obj.get_prepared_copy()
+        cls.test_resp, cls.test_signals = cls.client.send_request(
+            prepared_copy)
+        cls.test_req = req_obj.get_prepared_copy()
+        yield cls
+
 
     def test_case(self):
         self.test_signals.register(cors(self))
