@@ -90,6 +90,7 @@ class IssueTestResult(unittest.TextTestResult):
         lock.acquire()
         for issue in test.failures:
             response = issue.response
+            request = {} if issue.request is None else issue.request_as_dict(issue.request)
             response_dict = {} if response is None else issue.response_as_dict(response)
             self.raw_issues.append(issue)
             defect_type = issue.defect_type
@@ -171,6 +172,7 @@ class IssueTestResult(unittest.TextTestResult):
                                 i["signals"][sig_type] = signals[sig_type]
                         i["strings"].add(payload_string)
                         i["response"] = response_dict
+                        i["request"] = request
                         instance_obj = i
                         break
 
@@ -183,6 +185,7 @@ class IssueTestResult(unittest.TextTestResult):
                         "strings": set([payload_string]),
                         "signals": signals,
                         "response": response_dict,
+                        "request": request
                     }
                     failure_obj["instances"].append(instance_obj)
                     self.stats["unique_failures"] += 1
@@ -199,6 +202,7 @@ class IssueTestResult(unittest.TextTestResult):
                             else:
                                 i["signals"][sig_type] = signals[sig_type]
                         i["response"] = response_dict
+                        i["request"] = request
                         instance_obj = i
                         break
                 if not instance_obj:
@@ -207,6 +211,7 @@ class IssueTestResult(unittest.TextTestResult):
                         "severity": sev_rating,
                         "signals": signals,
                         "response": response_dict,
+                        "request": request
                     }
                     failure_obj["instances"].append(instance_obj)
                     self.stats["unique_failures"] += 1
