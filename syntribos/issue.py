@@ -116,5 +116,6 @@ class Issue(object):
             'url': res.url,
             'headers': dict(res.headers),
             'cookies': res.cookies.get_dict(),
-            'text': res.text
+            'text': res.text,
+            'version': res.raw.version
         }
