@@ -116,17 +116,9 @@ class Runner(object):
         return (i for i in included)
 
     @classmethod
-    def get_logger(cls, template_name):
+    def get_logger(cls, _):
         """Updates the logger handler for LOG."""
-        template_name = template_name.replace(os.path.sep, "::")
-        template_name = template_name.replace(".", "_")
-        log_file = "{0}.log".format(template_name)
-        if not cls.log_path:
-            cls.log_path = ENV.get_log_dir_name()
-        log_file = os.path.join(cls.log_path, log_file)
-        log_handle = logging.FileHandler(log_file, 'w')
         LOG = logging.getLogger()
-        LOG.handlers = [log_handle]
         LOG.setLevel(logging.DEBUG)
         logging.getLogger("urllib3").setLevel(logging.WARNING)
         return LOG
@@ -159,10 +151,6 @@ class Runner(object):
         This includes registering / parsing config options, creating the
         timestamped log directory and the results log file, if specified
         """
-        # Setup logging
-        cls.log_path = ENV.get_log_dir_name()
-        if not os.path.isdir(cls.log_path):
-            os.makedirs(cls.log_path)
 
         # Create results file if any, otherwise use sys.stdout
         if CONF.outfile:
