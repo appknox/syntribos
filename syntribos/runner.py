@@ -118,15 +118,10 @@ class Runner(object):
     @classmethod
     def get_logger(cls, template_name):
         """Updates the logger handler for LOG."""
-        template_name = template_name.replace(os.path.sep, "::")
-        template_name = template_name.replace(".", "_")
-        log_file = "{0}.log".format(template_name)
-        if not cls.log_path:
-            cls.log_path = ENV.get_log_dir_name()
-        log_file = os.path.join(cls.log_path, log_file)
-        log_handle = logging.FileHandler(log_file, 'w')
         LOG = logging.getLogger()
-        LOG.handlers = [log_handle]
+        if CONF.logging.enable_file_logging:
+            file_handler = cls.get_log_file_handler(template_name)
+            LOG.handlers = [file_handler]
         log_level = logging.DEBUG
         log_level_str = CONF.logging.log_level or ""
         log_level_maybe_int = logging.getLevelName(log_level_str.upper())
@@ -135,6 +130,20 @@ class Runner(object):
         LOG.setLevel(log_level)
         logging.getLogger("urllib3").setLevel(logging.WARNING)
         return LOG
+
+    @classmethod
+    def get_log_file_path(cls, template_name):
+        template_name = template_name.replace(os.path.sep, "::")
+        template_name = template_name.replace(".", "_")
+        log_file = "{0}.log".format(template_name)
+        if not cls.log_path:
+            cls.log_path = ENV.get_log_dir_name()
+        return os.path.join(cls.log_path, log_file)
+
+    @classmethod
+    def get_log_file_handler(cls, template_name):
+        log_file_path = cls.get_log_file_path(template_name)
+        return logging.FileHandler(log_file_path, 'w')
 
     @classmethod
     def setup_config(cls, use_file=False, argv=None):
@@ -165,15 +174,20 @@ class Runner(object):
         timestamped log directory and the results log file, if specified
         """
         # Setup logging
-        cls.log_path = ENV.get_log_dir_name()
-        if not os.path.isdir(cls.log_path):
-            os.makedirs(cls.log_path)
+        if CONF.logging.enable_file_logging:
+            cls.setup_file_logging()
 
         # Create results file if any, otherwise use sys.stdout
         if CONF.outfile:
             cls.output = open(CONF.outfile, "w")
         else:
             cls.output = sys.stdout
+
+    @classmethod
+    def setup_file_logging(cls):
+        cls.log_path = ENV.get_log_dir_name()
+        if not os.path.isdir(cls.log_path):
+            os.makedirs(cls.log_path)
 
     @classmethod
     def get_meta_vars(cls, file_path):

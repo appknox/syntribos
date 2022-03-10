@@ -323,6 +323,11 @@ def list_logger_opts():
         cfg.StrOpt(
             "log_level", default="info",
             help=_("Log Level to set")
+        ),
+        cfg.BoolOpt(
+            "enable_file_logging",
+            default=False,
+            help=_("Enable logging to file")
         )
     ]
 
