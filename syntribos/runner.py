@@ -127,7 +127,12 @@ class Runner(object):
         log_handle = logging.FileHandler(log_file, 'w')
         LOG = logging.getLogger()
         LOG.handlers = [log_handle]
-        LOG.setLevel(logging.DEBUG)
+        log_level = logging.DEBUG
+        log_level_str = CONF.logging.log_level or ""
+        log_level_maybe_int = logging.getLevelName(log_level_str.upper())
+        if isinstance(log_level_maybe_int, int):
+            log_level = log_level_maybe_int
+        LOG.setLevel(log_level)
         logging.getLogger("urllib3").setLevel(logging.WARNING)
         return LOG
 
