@@ -319,7 +319,16 @@ def list_logger_opts():
                    sample_default="~/.syntribos/logs",
                    help=_(
                        "Where to save debug log files for a syntribos run"
-                   ))
+                   )),
+        cfg.StrOpt(
+            "log_level", default="info",
+            help=_("Log Level to set")
+        ),
+        cfg.BoolOpt(
+            "enable_file_logging",
+            default=False,
+            help=_("Enable logging to file")
+        )
     ]
 
 
