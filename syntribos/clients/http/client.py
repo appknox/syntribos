@@ -37,9 +37,9 @@ class SynHTTPClient(HTTPClient):
         :returns: tuple of (response, signals)
         """
         if not requestslib_kwargs:
-            requestslib_kwargs = {"timeout": 10}
+            requestslib_kwargs = {"timeout": 20}
         elif not requestslib_kwargs.get("timeout", None):
-            requestslib_kwargs["timeout"] = 10
+            requestslib_kwargs["timeout"] = 20
 
         response, signals = super(SynHTTPClient, self).request(
             method, url, headers=headers, params=params, data=data,
