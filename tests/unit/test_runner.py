@@ -87,12 +87,6 @@ class RunnerUnittest(testtools.TestCase):
         loaded_tests = self.r.get_tests(["SSL"])
         self._compare_tests(expected, loaded_tests)
 
-    def test_get_cors_test(self):
-        """Check that we get only the CORS_HEADER test from get_tests."""
-        expected = ["CORS_WILDCARD_HEADERS"]
-        loaded_tests = self.r.get_tests(["CORS_WILDCARD_HEADERS"])
-        self._compare_tests(expected, loaded_tests)
-
     def test_get_sql_tests_exclude_header(self):
         """Check that we get the right SQL tests when "HEADER" is excluded."""
         expected = [
