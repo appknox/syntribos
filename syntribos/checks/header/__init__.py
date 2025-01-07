@@ -12,5 +12,4 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # flake8: noqa
-from syntribos.checks.header.header import cors as cors
 from syntribos.checks.header.xst import validate_content as xst
