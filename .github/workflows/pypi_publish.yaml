@@ -9,7 +9,7 @@ jobs:
     runs-on: ubuntu-latest
     environment:
       name: pypi
-      url: https://pypi.org/project/syntribos/
+      url: https://pypi.org/project/ak-syntribos/
     permissions:
       id-token: write
     steps:
