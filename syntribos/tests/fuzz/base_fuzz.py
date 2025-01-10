@@ -169,6 +169,48 @@ class BaseFuzzTestCase(base.BaseTestCase):
         new_cls.param_path = param_path
         return new_cls
 
+    def sanitize_value(self, value):
+        if len(value) > 500:
+            value = (
+                f"{value[:250]}...({len(value)} chars)...{value[-250:]}"
+            )
+        return value
+
+    def sanitize_list_values(self, _list):
+        for i in range(len(_list)):
+            if isinstance(_list[i], dict):
+                _list[i] = self.sanitize_dict_values(_list[i])
+            elif isinstance(_list[i], list):
+                _list[i] = self.sanitize_list_values(_list[i])
+            else:
+                _list[i] = self.sanitize_value(_list[i])
+        return _list
+
+    def sanitize_dict_values(self, _dict):
+        if not isinstance(_dict, dict):
+            return _dict
+        for key, value in _dict.items():
+            if isinstance(value, dict):
+                _dict[key] = self.sanitize_dict_values(value)
+            elif isinstance(value, list):
+                _dict[key] = self.sanitize_list_values(value)
+            else:
+                _dict[key] = self.sanitize_value(value)
+        return _dict
+
+    def santize_payload_request(self):
+        if self.test_req is None:
+            return
+        self.sanitize_dict_values(self.test_req.headers)
+        self.sanitize_dict_values(self.test_req.params)
+        if self.test_req.data is not None:
+            if isinstance(self.test_req.data, dict):
+                self.sanitize_dict_values(self.test_req.data)
+            elif isinstance(self.test_req.data, list):
+                self.sanitize_list_values(self.test_req.data)
+            else:
+                self.test_req.data = self.sanitize_value(self.test_req.data)
+
     def register_issue(self, defect_type, severity, confidence, description, failed_strings=None):
         """Adds an issue to the test's list of issues
 
@@ -194,6 +236,7 @@ class BaseFuzzTestCase(base.BaseTestCase):
             confidence=confidence,
             description=description)
 
+        self.santize_payload_request()
         issue.request = self.test_req
         issue.response = self.test_resp
         issue.template_path = self.template_path
